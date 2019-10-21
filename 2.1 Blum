@@ -1,0 +1,158 @@
+import math
+import sys
+import re
+import time
+
+# 2 ** key
+def powered(key):
+    return 1<<key
+
+M = 216091
+M1 = powered(31) - 1 # Счастливое число Слейвена
+
+  
+# для простых чисел через решето(из интернета)
+def bit_sieve( n ):
+    if n < 2:
+        return []
+    bits = [ 1 ] * n
+    sqrt_n  = int( math.sqrt( n ) ) + 1
+    for i in range( 2, sqrt_n ):
+        if bits[ i - 2 ]:
+            for j in range ( i + i, n + 1, i ):
+                bits[ j - 2 ] = 0
+    return bits
+
+# непосредственно k-ое простое число, используя штуку выше
+def Simple(k):
+    if k == 1: return 2
+    sieve = bit_sieve( int(1.5*k*math.log( k ) ) + 1 )
+    i = 0
+    while k:
+        k -= sieve[ i ]
+        i += 1
+    return( i + 1 )
+
+# Хэш-функция
+def Hash(x, i, m):
+    return (((i+1)*x + Simple(i+1)) % M1) % m
+
+# Обработка ввода
+def Commands_input(input_ = ''):
+    for line in sys.stdin:
+        input_+= line + "\n"
+    return input_
+
+# Инкапсулированный битовый массив
+class Bits:
+    # int в питоне самая оптимальная штука в питоне для хранения битового массива!!!
+    bits = int()
+    m = int()
+    init = False
+    
+    def Set_Size(self, m_):
+        self.bits = 0
+        self.m = m_
+        self.init = True
+        
+    # добавляем бит в битовый массив в key ячейку, то есть "ИЛИ" и 2 в степени key    
+    def Add(self, key):
+        if(self.init):
+            self.bits = self.bits | powered(key)
+            
+    def Find_Bit(self, k):
+        if(self.init):
+            if (self.bits & powered(k)) == 0: return False
+            return True
+        return False
+    
+    # возвращаем наш битовый массив, но не забыываем развернуть и малость подформатировать под нормальный вывод    
+    def Print_Bits(self):
+        if(self.init):
+            return bin(self.bits)[:1:-1] + '0'*(self.m - len(bin(self.bits)[2:]))
+        else: return "error"
+    
+
+class Blum()    :
+    # Формируем кол-во хэш-функций, размера битового массива и сам битовый массив
+    n = float() # примерное кол-во элементов
+    P = float() # вероятность ложного срабатывания
+    k = int() # кол-во хэш-функций
+    m = int() # размерность битового массива
+    bits = Bits() # битовый массив(инкапсулированный)
+    input_set = False
+    
+    # Добавялем элемент  
+    def AddElement(self, x):
+        for i in range(0,self.k):
+            self.bits.Add(Hash(x, i, self.m))
+        return self.bits
+            
+    # Проверяем возможное нахождение элемента в структуре
+    def Search(self, x):
+         for i in range(0,self.k):
+            if self.bits.Find_Bit(Hash(x, i, self.m)) == False: return False
+         return True
+    
+    def Commands(self, input_):
+        output = ''
+        input_ = input_.split('\n')
+        for line in input_[0:]:
+                # пустая строка
+                if(not re.match(r"^\s*$", line) == None): continue
+                # set
+                elif(not re.match(r"^set\s(\d+)\s(\d+)", line) == None) and (self.input_set == False):
+                    try:
+                        line = line.split()
+                        if (float(line[1]) > 0) and (float(line[2]) > 0):
+                            self.n = float(line[1])
+                            self.P = float(line[2])
+                            self.k = round(-math.log2(self.P))
+                            self.m = round(-self.n*math.log2(self.P)/math.log(2))
+                            self.bits.Set_Size(self.m)
+                            if(self.k <= 0 or self.m <= 0):
+                                output+= "error"+"\n"
+                                continue
+                            self.input_set = True
+                            output+= str(self.m) + " " + str(self.k) + "\n"
+                        else: output+= "error"+"\n"  
+                    except:
+                        output+= "error"+"\n"
+                        continue
+                # add    
+                elif(not re.match(r"^add\s(\d+)$", line) == None) and (self.input_set == True):
+                    try:
+                        line = line.split()
+                        self.AddElement(int(line[1]))
+                    except:
+                        output+= "error"+"\n"
+                        continue    
+                # search
+                elif(not re.match(r"^search\s(\d+)$", line) == None) and (self.input_set == True):
+                    try:
+                        line = line.split()
+                        output+= str(int(self.Search(int(line[1])))) +"\n"
+                    except:
+                        output+= "error"+"\n"
+                        continue    
+                # print    
+                elif(not re.match(r"^print$", line) == None) and (self.input_set == True):
+                    try: 
+                        output+= self.bits.Print_Bits() + "\n"
+                    except:
+                        output+= "error"+"\n"
+                        continue    
+                else: output+= "error"+"\n"
+        return output
+    
+    
+    
+if __name__ == "__main__":   
+    input_ = Commands_input()
+    
+    Filter1 = Blum()
+    output = Filter1.Commands(input_)
+    print(output)
+    
+    
+   
